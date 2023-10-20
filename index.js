@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -34,6 +34,7 @@ async function run() {
     const productCollection = client.db("luxAuraBeauty").collection("product");
 
     const brandCollection = client.db("luxAuraBrand").collection("Brand");
+    const cartCollection = client.db("luxAuraCart").collection("Cart");
     // =======================pOST DATA TO THE DATABASE==========================================
     app.post("/product", async (req, res) => {
       const newProduct = req.body;
@@ -49,11 +50,64 @@ async function run() {
       res.send(result); //sending data to server to database
     });
 
+    // ==================post the cart on the my cart page ===============================================
+    app.post("/cart", async (req, res) => {
+      const cart = req.body;
+      console.log(cart); //show in the server console
+      const result = await cartCollection.insertOne(cart);
+      res.send(result);
+    });
+    // ==================get the cart on the my cart page ===============================================
+    app.get("/carts", async (req, res) => {
+      const cursor = cartCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    // ===============================delete cart from my cart ==================================
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // ================================get  products from database to server=============================================================
     app.get("/brands", async (req, res) => {
       const cursor = brandCollection.find();
       const result = await cursor.toArray();
-      res.send(result); //sending data to get all coffee from database
+      res.send(result);
+    });
+
+    //========================get data details========================================
+
+    // =====================update product============================================
+
+    app.get("/brands/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await brandCollection.findOne(query);
+      res.send(result);
+    });
+
+    app.put("/brands/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateProduct = req.body;
+
+      const product = {
+        $set: {
+          photo: updateProduct.photo,
+          name: updateProduct.name,
+          brand: updateProduct.brand,
+          type: updateProduct.type,
+          price: updateProduct.price,
+          description: updateProduct.description,
+          rating: updateProduct.rating,
+        },
+      };
+      const result = await brandCollection.updateOne(filter, product, options);
+      res.send(result);
     });
     //  =================================================================
     // Send a ping to confirm a successful connection
